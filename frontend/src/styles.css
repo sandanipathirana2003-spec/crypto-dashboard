@@ -1,0 +1,21 @@
+/* Basic app styles */
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* Toast style */
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+  z-index: 1000;
+  opacity: 0.98;
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}

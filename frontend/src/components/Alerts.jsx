@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -12,6 +12,9 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
   const [smaLong, setSmaLong] = useState(50);
   const [macdDirection, setMacdDirection] = useState("above");
 
+  const [toast, setToast] = useState("");
+  const toastTimerRef = useRef(null);
+
   async function loadAlerts() {
     const res = await axios.get(`${BACKEND}/api/alerts`, { params: { symbol } });
     setAlerts(res.data.alerts || []);
@@ -20,7 +23,16 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
 
   useEffect(()=> {
     loadAlerts();
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
   }, [symbol]);
+
+  function showToast(msg, ms = 3000){
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(()=> setToast(""), ms);
+  }
 
   async function createAlert(e) {
     e.preventDefault();
@@ -44,20 +56,27 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
       await axios.post(`${BACKEND}/api/alerts`, payload);
       setValue("");
       loadAlerts();
+      showToast("Alert created", 2500);
     } catch (err) {
       alert("Error creating alert: " + (err?.response?.data?.detail || err.message));
     }
   }
 
   async function removeAlert(id) {
-    await axios.delete(`${BACKEND}/api/alerts/${id}`);
-    loadAlerts();
+    try{
+      await axios.delete(`${BACKEND}/api/alerts/${id}`);
+      loadAlerts();
+      showToast(`Alert #${id} deleted`, 2500);
+    } catch (err) {
+      alert("Error deleting alert: " + (err?.response?.data?.detail || err.message));
+    }
   }
 
   async function resetAlert(id) {
     try {
       await axios.post(`${BACKEND}/api/alerts/${id}/reset`);
       loadAlerts();
+      showToast(`Alert #${id} reset`, 2500);
     } catch (err) {
       alert("Error resetting alert: " + (err?.response?.data?.detail || err.message));
     }
@@ -125,6 +144,10 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
           ))}
         </ul>
       </div>
+
+      {toast ? (
+        <div className="toast" role="status">{toast}</div>
+      ) : null}
     </div>
   );
 }
