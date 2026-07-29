@@ -54,6 +54,15 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
     loadAlerts();
   }
 
+  async function resetAlert(id) {
+    try {
+      await axios.post(`${BACKEND}/api/alerts/${id}/reset`);
+      loadAlerts();
+    } catch (err) {
+      alert("Error resetting alert: " + (err?.response?.data?.detail || err.message));
+    }
+  }
+
   return (
     <div style={{border:"1px solid #ddd", padding:8, maxWidth:800, marginTop:12}}>
       <h4>Alerts</h4>
@@ -109,6 +118,9 @@ export default function Alerts({ defaultSymbol, onAlertsChange }) {
             <li key={a.id} style={{marginBottom:6}}>
               #{a.id} — {a.type} {a.value ? a.value : ""} {a.params ? JSON.stringify(a.params) : ""} — recurring: {a.recurring ? "yes":"no"} — triggered: {a.triggered ? "yes":"no"}
               <button onClick={()=>removeAlert(a.id)} style={{marginLeft:8}}>delete</button>
+              {a.triggered ? (
+                <button onClick={()=>resetAlert(a.id)} style={{marginLeft:8}}>reset</button>
+              ) : null}
             </li>
           ))}
         </ul>
