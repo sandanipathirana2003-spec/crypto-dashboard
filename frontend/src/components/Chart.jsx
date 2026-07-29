@@ -3,6 +3,7 @@ import { createChart } from "lightweight-charts";
 import useWebSocket from "../hooks/useWebSocket";
 import { fetchKlines, fetchSummary } from "../api";
 import Alerts from "./Alerts";
+import showToast from "../toast";
 
 function klineToCandle(k){
   return {
@@ -35,7 +36,7 @@ export default function Chart({symbol, interval}){
       if(cancelled) return;
       const candles = data.map(klineToCandle);
       candleSeriesRef.current.setData(candles);
-    });
+    }).catch(()=>{});
     fetchSummary(symbol, interval).then(r=> setSummary(r.summary)).catch(()=>{});
     // open websocket to backend
     const host = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
@@ -48,6 +49,7 @@ export default function Chart({symbol, interval}){
   useWebSocket({
     url: clientWsUrl,
     onMessage: (msg)=>{
+      if(!msg) return;
       if(msg.type === "kline"){
         const k = msg.kline;
         const candle = {
@@ -63,13 +65,24 @@ export default function Chart({symbol, interval}){
         } catch (e) {
           // if update fails, setData fallback
           // Note: lightweight-charts may throw if series empty; handle gracefully
-          candleSeriesRef.current.setData([candle]);
+          try { candleSeriesRef.current.setData([candle]); } catch (e) {}
         }
       } else if (msg.type === "alert"){
         // show alert in UI
         setTriggeredAlerts(prev => [msg.alert, ...prev].slice(0,20));
-        // simple visual/web-notification:
-        try { window.alert(`ALERT ${msg.symbol}: ${msg.alert.type} ${msg.alert.value || JSON.stringify(msg.alert.params)}`); } catch {}
+        // show toast with readable message
+        try {
+          const a = msg.alert || {};
+          const reason = a.type || '';
+          const val = a.value !== undefined && a.value !== null ? ` ${a.value}` : '';
+          const params = a.params ? ` params: ${JSON.stringify(a.params)}` : '';
+          const indicators = a.indicators ? ` indicators: ${JSON.stringify(a.indicators)}` : '';
+          const text = `ALERT ${msg.symbol}: ${reason}${val}${params}${indicators}`;
+          showToast(text, 6000);
+        } catch (e){
+          // fallback
+          showToast(`ALERT ${msg.symbol}`);
+        }
       }
     }
   });
